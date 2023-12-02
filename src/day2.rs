@@ -52,7 +52,18 @@ fn parse_game(schema: String) -> Option<Game> {
     None
 }
 
-fn possible_game(game: Game) -> Option<usize> {
+fn parse_games() -> Vec<Game> {
+    if let Some(game_lines) = fs::read_to_string("data/2.input").ok() {
+        return game_lines
+            .lines()
+            .filter_map(|line| parse_game(line.to_string()))
+            .collect();
+    }
+
+    panic!("file not found")
+}
+
+fn possible_game(game: &Game) -> Option<usize> {
     // Return the id of the game if it’s possible.
 
     fn challenge(reveal: &Reveal) -> bool {
@@ -71,19 +82,39 @@ fn possible_game(game: Game) -> Option<usize> {
 fn possible_game_count() -> usize {
     // Return the sum of game ids, for all possible games.
 
-    if let Some(game_lines) = fs::read_to_string("data/2.input").ok() {
-        let games: usize = game_lines
-            .lines()
-            .filter_map(|line| parse_game(line.to_string()))
-            .filter_map(|game| possible_game(game))
-            .sum();
+    parse_games()
+        .iter()
+        .filter_map(|game| possible_game(game))
+        .sum()
+}
 
-        return games;
-    }
+fn game_power(game: &Game) -> usize {
+    // Calculate the minimum possible count of each cube colour
+    // (maximum seen value), multiplied together.
 
-    panic!("file not found")
+    let (mut red, mut green, mut blue) = (0,0,0);
+
+    game.data
+        .iter()
+        .for_each(|reveal| {
+            red = red.max(reveal.red);
+            green = green.max(reveal.green);
+            blue = blue.max(reveal.blue);
+        });
+
+    red * green * blue
+}
+
+fn sum_of_powers() -> usize {
+    // Get the sum of the power of each game.
+
+    parse_games()
+        .iter()
+        .map(|game| game_power(game))
+        .sum()
 }
 
 fn main() {
     println!("part one: {}", possible_game_count());
+    println!("part two: {}", sum_of_powers());
 }
