@@ -42,7 +42,7 @@ fn get_lines() -> Vec<String> {
 
 fn preprocess_lines() -> Vec<String> {
     // Get each line as a string, replacing spelled numbers with digits.
-    // To account for multiple characters using the same digit, I leave any reuable starts and ends.
+    // To account for multiple characters using the same digit, I leave any reusable starts and ends.
 
     get_lines()
         .into_iter()
@@ -64,5 +64,5 @@ fn preprocess_lines() -> Vec<String> {
 
 fn main() {
     println!("part one: {}", trebuchet_values(get_lines()));
-    println!("part one: {}", trebuchet_values(preprocess_lines()));
+    println!("part two: {}", trebuchet_values(preprocess_lines()));
 }
