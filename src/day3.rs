@@ -78,6 +78,7 @@ fn parse_numbers_and_symbols() -> (Vec<Symbol>, Vec<Number>) {
 
 fn symbol_touches_number(symbol: &Symbol, number: &Number) -> bool {
     // The symbol exists on the perimeter of the number.
+    // `.checked_sub()` handles `number.start` being 0.
 
     return
         symbol.y.abs_diff(number.y) <= 1 &&
@@ -93,9 +94,6 @@ fn sum_of_true_parts() -> usize {
     return numbers
         .iter()
         .filter(|number| {
-            // Check whether a symbol is in any of the space surrounding a number.
-            // `.checked_sub()` handles number.start being 0.
-
             symbols.iter().any(|symbol| symbol_touches_number(symbol, number))
         })
         .map(|number| number.value)
