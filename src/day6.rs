@@ -24,7 +24,40 @@ fn ways_to_win() -> usize {
                 }).product::<usize>();
         }
 
-        return 0;
+        panic!("incorrect file format")
+    }
+
+    panic!("file not found")
+}
+
+fn bad_kerning() -> usize {
+    if let Some(input) = fs::read_to_string("data/6.input").ok() {
+        let input = input.replace(" ", "");
+
+        if let Some((time, distance)) = input.split_once("\n") {
+            let time = time
+                .split_once(":")
+                .unwrap().1
+                .trim()
+                .parse::<usize>()
+                .unwrap();
+
+            let distance = distance
+                .split_once(":")
+                .unwrap().1
+                .trim()
+                .parse::<usize>()
+                .unwrap();
+
+            // This code is kinda lazy because I thought this problem would need optimisation.
+            return (0..=time)
+                .enumerate()
+                .map(|(strategy, idx)| { (time - strategy) * idx > distance})
+                .filter(|n| *n)
+                .count();
+        }
+
+        panic!("incorrect file format")
     }
 
     panic!("file not found")
@@ -32,4 +65,5 @@ fn ways_to_win() -> usize {
 
 fn main() {
     println!("part one: {}", ways_to_win());
+    println!("part two: {}", bad_kerning());
 }
