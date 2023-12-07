@@ -2,6 +2,11 @@ use std::fs;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+enum Ruleset {
+    Standard,
+    Jokers
+}
+
 #[derive(PartialEq, PartialOrd, Eq)]
 enum Rank {
     Five    = 7,
@@ -17,7 +22,7 @@ enum Rank {
 struct Hand {
     rank: Rank,
     cards: Vec<usize>,
-    bid: usize
+    bid: usize,
 }
 
 impl PartialOrd for Hand {
@@ -49,12 +54,49 @@ impl Ord for Hand {
     }
 }
 
-fn determine_rank(cards: &Vec<usize>) -> Rank {
+fn determine_rank(cards: &Vec<usize>, ruleset: &Ruleset) -> Rank {
     let mut counts: HashMap<usize, usize> = HashMap::new();
 
-    cards.iter().for_each(|card| {
-        counts.entry(*card).and_modify(|v| *v += 1).or_insert(1);
-    });
+    match ruleset {
+        Ruleset::Standard => {
+            cards.iter().for_each(|card| {
+                counts.entry(*card).and_modify(|v| *v += 1).or_insert(1);
+            });
+        },
+        Ruleset::Jokers => {
+            // Find the best card number to add your jokers to.
+
+            cards.iter().for_each(|card| {
+                if card != &1 {
+                    counts.entry(*card).and_modify(|v| *v += 1).or_insert(1);
+                }
+            });
+
+            let mut best_to_add_to = counts.clone().into_iter().collect::<Vec<(usize, usize)>>();
+            let number_of_jokers = cards.iter().filter(|card| *card == &1).count();
+
+            best_to_add_to.sort_by(|a, b| {
+                // Sort by number of appearances, then by highest card.
+                return match b.1.cmp(&a.1) {
+                    Ordering::Less => Ordering::Less,
+                    Ordering::Greater => Ordering::Greater,
+                    Ordering::Equal => b.0.cmp(&a.0)
+                }
+            });
+
+            if best_to_add_to.len() == 0 {
+                // Only thing is jokers, you have five-of-a-kind jokers.
+                counts
+                    .entry(1)
+                    .or_insert(5);
+            } else {
+                counts
+                    .entry(best_to_add_to[0].0)
+                    .and_modify(|v| *v += number_of_jokers);
+            }
+
+        }
+    }
 
     let mut cols = counts.into_values().collect::<Vec<usize>>();
     cols.sort_by(|a, b| b.cmp(a));
@@ -70,7 +112,7 @@ fn determine_rank(cards: &Vec<usize>) -> Rank {
     }
 }
 
-fn parse_line(line: &str) -> Option<Hand> {
+fn parse_line(line: &str, ruleset: &Ruleset) -> Option<Hand> {
     if let Some((cards, bid)) = line.split_once(" ") {
         let cards = cards
             .chars()
@@ -79,7 +121,10 @@ fn parse_line(line: &str) -> Option<Hand> {
                     Some(v) => Some(v as usize),
                     None => match c {
                         'T' => Some(10),
-                        'J' => Some(11),
+                        'J' => match ruleset {
+                            Ruleset::Standard => Some(11),
+                            Ruleset::Jokers => Some(1),
+                        },
                         'Q' => Some(12),
                         'K' => Some(13),
                         'A' => Some(14),
@@ -89,7 +134,7 @@ fn parse_line(line: &str) -> Option<Hand> {
             }).collect::<Vec<usize>>();
 
         if let Some(bid) = bid.parse::<usize>().ok() {
-            let rank = determine_rank(&cards);
+            let rank = determine_rank(&cards, ruleset);
             return Some(Hand { rank, cards, bid })
         }
     }
@@ -97,11 +142,12 @@ fn parse_line(line: &str) -> Option<Hand> {
     None
 }
 
-fn sum_of_winnings() -> usize {
+fn sum_of_winnings(ruleset: Ruleset) -> usize {
+    // Build cards based on a ruleset, since jokers mode only changes a few things.
     if let Some(input) = fs::read_to_string("data/7.input").ok() {
         let mut winnings = input
             .lines()
-            .filter_map(|line| parse_line(line))
+            .filter_map(|line| parse_line(line, &ruleset))
             .collect::<Vec<Hand>>();
 
         winnings.sort();
@@ -113,6 +159,6 @@ fn sum_of_winnings() -> usize {
 }
 
 fn main() {
-    println!("part one: {}", sum_of_winnings());
-    // Too low.
+    println!("part one: {}", sum_of_winnings(Ruleset::Standard));
+    println!("part two: {}", sum_of_winnings(Ruleset::Jokers));
 }
