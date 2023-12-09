@@ -1,6 +1,11 @@
 use std::fs;
 
-fn unfurl_reading(reading: Vec<isize>) -> isize {
+enum Direction {
+    Future,
+    History
+}
+
+fn unfurl_reading(reading: Vec<isize>, direction: &Direction) -> isize {
     // Extrapolate by creating new layers, which represent the difference between windows of the
     // previous layer. Repeat this until the most recent layer is all zero, which means the pattern
     // has been found.
@@ -27,23 +32,30 @@ fn unfurl_reading(reading: Vec<isize>) -> isize {
         extrapolations.push(new_extrapolation);
     }
 
-    return extrapolations.iter().fold(0, |acc, x| acc + x.iter().last().unwrap());
+    // For looking at the history, calculate from the deepest layer upwards, subtracting the
+    // accumulation from the next layer up.
+    return match direction {
+        Direction::Future => extrapolations.iter().fold(0, |acc, x| acc + x.iter().last().unwrap()),
+        Direction::History => extrapolations.iter().rev().fold(0, |acc, x| x.iter().nth(0).unwrap() - acc)
+    };
 }
 
-fn oasis_sum() -> isize {
+fn oasis_scan(direction: Direction) -> isize {
     // For each line, take it as a list of integers and calculate the next integer in the pattern.
+    // This can be applied forwards and backwards.
 
     if let Some(readings) = fs::read_to_string("data/9.input").ok() {
         let readings: Vec<Vec<isize>> = readings.lines().map(|line| {
             line.split_whitespace().filter_map(|v| v.parse::<isize>().ok()).collect()
         }).collect();
 
-        return readings.into_iter().map(|reading| unfurl_reading(reading)).sum();
+        return readings.into_iter().map(|reading| unfurl_reading(reading, &direction)).sum();
     }
 
     panic!("file not found")
 }
 
 fn main() {
-    println!("part one: {}", oasis_sum());
+    println!("part one: {}", oasis_scan(Direction::Future));
+    println!("part two: {}", oasis_scan(Direction::History));
 }
