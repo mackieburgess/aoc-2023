@@ -174,7 +174,6 @@ fn enclosed_tiles(map: &Vec<Vec<char>>, walls: Vec<(usize, usize)>) -> usize {
                     },
                     _ => {}
                 }
-                // Manage state.
             } else {
                 if enclosed { count += 1 }
             }
