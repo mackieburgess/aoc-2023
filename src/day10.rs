@@ -1,7 +1,7 @@
 use std::fs;
 
-fn find_valid_start_point(map: &Vec<Vec<char>>, cursor: (usize, usize)) -> (usize, usize) {
-    // Get a valid starting direction.
+fn find_valid_start_points(map: &Vec<Vec<char>>, cursor: (usize, usize)) -> Vec<(usize, usize)> {
+    // Get all valid starting directions.
 
     let mut agenda = vec![];
 
@@ -25,8 +25,7 @@ fn find_valid_start_point(map: &Vec<Vec<char>>, cursor: (usize, usize)) -> (usiz
         agenda.push((cursor.0, cursor.1 + 1));
     }
 
-    // Unwrap: it is guaranteed by the input that two pipes connect to S.
-    return agenda.into_iter().nth(0).unwrap();
+    return agenda;
 }
 
 fn get_loop(
@@ -41,7 +40,7 @@ fn get_loop(
         visited.push(cursor);
 
         let next = match map[cursor.1][cursor.0] {
-            'S' => vec![find_valid_start_point(map, cursor)],
+            'S' => find_valid_start_points(map, cursor),
             other => {
                 let possible_directions: Vec<(usize, usize)> = match other {
                     '-' => vec![(cursor.0 - 1, cursor.1), (cursor.0 + 1, cursor.1)],
@@ -53,7 +52,6 @@ fn get_loop(
                     other => panic!("Bad input: {other}")
                 };
 
-                // 
                 possible_directions
                     .into_iter()
                     .filter(|cur| !visited.contains(cur))
@@ -72,6 +70,19 @@ fn get_loop(
     };
 }
 
+fn get_start(map: &Vec<Vec<char>>) -> Option<(usize, usize)> {
+    // Find 'S' in the map
+    for (y, line) in map.iter().enumerate() {
+        for (x, c) in line.iter().enumerate() {
+            if c == &'S' {
+                return Some((x, y))
+            }
+        }
+    }
+
+    return None;
+}
+
 fn loop_size() -> usize {
     // Find the biggest loop of pipes which contains 'S'.
     // We are given some helpful invariants:
@@ -82,28 +93,123 @@ fn loop_size() -> usize {
 
     if let Some(pipes) = fs::read_to_string("data/10.input").ok() {
         // Parse pipe map.
-        let pipe_map: Vec<Vec<char>> = pipes
+        let map: Vec<Vec<char>> = pipes
             .lines()
             .map(|line| line.chars().collect())
             .collect();
 
-        let mut start = (0, 0);
+        // Get starting point.
+        if let Some(start) = get_start(&map) {
+            // The problem actually wants the furthest we get from S, which is length / 2.
+            return get_loop(&map, start).len() / 2;
+        } else {
+            panic!("No 'S' starting point found")
+        }
 
-        // Find the starting point.
-        pipe_map
-            .iter()
-            .enumerate()
-            .for_each(|(y, line)|
-                line
-                    .iter()
-                    .enumerate()
-                    .for_each(|(x, c)| {
-                        if c == &'S' { start = (x, y) }
-                    })
-            );
+    }
 
-        // The problem actually wants the furthest we get from S, which is length / 2.
-        return get_loop(&pipe_map, start).len() / 2;
+    panic!("file not found")
+}
+
+fn remove_s(map: &Vec<Vec<char>>, char: char, location: (usize, usize)) -> char {
+    // Convert S into the character it acts as.
+    // This is hairy manual logic.
+
+    if char != 'S' {
+        return char;
+    }
+
+    // Check whether S connects to each cardinal direction.
+    let left  = location.0 > 0 && ['-', 'F', 'L'].contains(&map[location.0 - 1][location.1]);
+    let top   = location.1 > 0 && ['|', 'F', '7'].contains(&map[location.0][location.1 - 1]);
+    let right = location.0 <= map[0].len() && ['-', 'J', '7'].contains(&map[location.0 + 1][location.1]);
+    let down  = location.1 <= map.len() && ['|', 'L', 'J'].contains(&map[location.0][location.1 + 1]);
+
+    // Match the possible combinations.
+    return match (left, top, right, down) {
+        (_, true, _, true) => '|',
+        (true, _, true, _) => '-',
+        (_, _, true, true) => 'F',
+        (true, true, _, _) => 'J',
+        (true, _, _, true) => '7',
+        (_, true, true, _) => 'L',
+
+        // S is guaranteed by the input to contain exactly two connections.
+        _ => panic!("Bad value for S")
+    };
+}
+
+fn enclosed_tiles(map: &Vec<Vec<char>>, walls: Vec<(usize, usize)>) -> usize {
+    // Count enclosed tiles.
+    // This involves quite involved logic.
+    //   - At any point in time we track whether we're inside or outside.
+    //   - If a tile isn't part of walls, and we're inside, increment a counter.
+    //   - If a tile is part of walls, modify the inside/outside tracker:
+    //      Wall is 'S' => find out what 'S' emulates, then act accordingly.
+    //      Wall is '|' => flip state.
+    //      Wall is 'F'/'L' => flip state, but set the "unflipper" to '7'/'J' respectively.
+    //      Wall is '7'/'J' => if is set as the flipper, flip state. Otherwise do nothing.
+    //      Wall is '-' => do nothing.
+
+    let mut count = 0;
+
+    for (y, line) in map.iter().enumerate() {
+        let mut enclosed = false;
+        let mut unflip = '.';
+
+        for (x, c) in line.iter().enumerate() {
+            if walls.contains(&(x, y)) {
+                match remove_s(map, *c, (x, y)) {
+                    '|' => enclosed = !enclosed,
+                    'F' => {
+                        enclosed = !enclosed;
+                        unflip = '7';
+                    },
+                    'L' => {
+                        enclosed = !enclosed;
+                        unflip = 'J';
+                    },
+                    v if v == unflip => {
+                        enclosed = !enclosed;
+                    },
+                    _ => {}
+                }
+                // Manage state.
+            } else {
+                if enclosed { count += 1 }
+            }
+        }
+    }
+
+    return count;
+}
+
+fn nest_zone() -> usize {
+    // Find how much empty space is in the loop.
+    //
+    // The hard part of this is not counting elements which aren't actually inside the loop.
+    // For instance:
+    //   F----7
+    //   |F--7|
+    //   ||..||
+    //   |L7FJ|
+    //   L-JL-J
+    // Even though .. looks "inside" the loop, it's not "inside" because of the dual walls.
+
+    if let Some(pipes) = fs::read_to_string("data/10.input").ok() {
+        let map: Vec<Vec<char>> = pipes
+            .lines()
+            .map(|line| line.chars().collect())
+            .collect();
+
+        // Get starting point.
+        if let Some(start) = get_start(&map) {
+            let enclosing_loop = get_loop(&map, start);
+
+            return enclosed_tiles(&map, enclosing_loop);
+        } else {
+            panic!("No 'S' starting point found")
+        }
     }
 
     panic!("file not found")
@@ -111,4 +217,5 @@ fn loop_size() -> usize {
 
 fn main() {
     println!("part one: {}", loop_size());
+    println!("part two: {}", nest_zone());
 }
