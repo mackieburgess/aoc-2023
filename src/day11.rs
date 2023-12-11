@@ -4,7 +4,7 @@ fn manhattan(i: &(usize, usize), j: &(usize, usize)) -> usize {
     return i.0.abs_diff(j.0) + i.1.abs_diff(j.1);
 }
 
-fn galaxy_distances() -> usize {
+fn galaxy_distances(expansion: usize) -> usize {
     // Double the size of any empty rows/columns,
     // then get the sum of all distances between galaxys.
 
@@ -34,14 +34,14 @@ fn galaxy_distances() -> usize {
         // Expand rows.
         for row in empty_rows.iter().rev() {
             for mut galaxy in galaxies.iter_mut() {
-                if galaxy.1 > *row { galaxy.1 += 1 }
+                if galaxy.1 > *row { galaxy.1 += expansion }
             }
         }
 
         // Expand columns.
         for col in empty_cols.iter().rev() {
             for mut galaxy in galaxies.iter_mut() {
-                if galaxy.0 > *col { galaxy.0 += 1 }
+                if galaxy.0 > *col { galaxy.0 += expansion }
             }
         }
 
@@ -64,5 +64,6 @@ fn galaxy_distances() -> usize {
 }
 
 fn main() {
-    println!("part one: {}", galaxy_distances());
+    println!("part one: {}", galaxy_distances(1));
+    println!("part two: {}", galaxy_distances(999_999));
 }
