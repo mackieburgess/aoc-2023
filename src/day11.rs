@@ -5,7 +5,7 @@ fn manhattan(i: &(usize, usize), j: &(usize, usize)) -> usize {
 }
 
 fn galaxy_distances(expansion: usize) -> usize {
-    // Double the size of any empty rows/columns,
+    // Increase the size of any empty rows/columns by `expansion`,
     // then get the sum of all distances between galaxys.
 
     if let Some(map) = fs::read_to_string("data/11.input").ok() {
@@ -45,12 +45,11 @@ fn galaxy_distances(expansion: usize) -> usize {
             }
         }
 
-        // debug_galaxies(&galaxies);
-
         let mut distance_between_galaxies = 0;
 
         for i in galaxies.iter() {
             for j in galaxies.iter() {
+                // Don't check combinations twice.
                 if i.0 < j.0 || (i.0 == j.0 && i.1 < j.1) {
                     distance_between_galaxies += manhattan(i, j);
                 }
