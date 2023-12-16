@@ -147,7 +147,34 @@ fn energised_tiles() -> usize {
     panic!("file not found")
 }
 
+fn best_energising_tile() -> usize {
+    if let Some(input) = fs::read_to_string("data/16.input").ok() {
+        let board: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
+        let mut starting_choices = vec![];
+
+        for idx in 0..board.len() {
+            starting_choices.push(Cursor { heading: Heading::Right, x: 0, y: idx });
+            starting_choices.push(Cursor { heading: Heading::Down,  x: idx, y: 0 });
+            starting_choices.push(Cursor { heading: Heading::Left,  x: board.len() - 1, y: idx });
+            starting_choices.push(Cursor { heading: Heading::Up,    x: idx, y: board.len() - 1 });
+        }
+
+        return starting_choices.into_iter().map(|cur| {
+            let mut found = HashSet::new();
+
+            run_energisation(&mut found, cur, &board);
+
+            return found
+                .iter()
+                .map(|v| (v.x, v.y))
+                .collect::<HashSet<_>>().len();
+        }).max().unwrap_or(0);
+    }
+
+    panic!("file not found")
+}
 
 fn main() {
     println!("part one: {}", energised_tiles());
+    println!("part two: {}", best_energising_tile());
 }
