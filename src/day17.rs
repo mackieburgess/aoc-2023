@@ -35,8 +35,10 @@ fn traversable(
     heading: Heading,
     range: (usize, usize)
 ) -> bool {
+    // Determine whether we can go in a given direction from our current tile.
+
     // No backtracking rule.
-    // This took 3 hours to figure out.
+    // Took 3 hours for me to realise I need this...
     if match heading {
         Heading::Up => path.heading == Heading::Down,
         Heading::Right => path.heading == Heading::Left,
@@ -44,12 +46,14 @@ fn traversable(
         Heading::Left => path.heading == Heading::Right,
     } { return false; }
 
+    // Not hitting the edge of the board.
     if match heading {
         Heading::Up => path.y != 0,
         Heading::Right => path.x != map[path.y].len() - 1,
         Heading::Down => path.y != map.len() - 1,
         Heading::Left => path.x != 0,
     } {
+        // Calculating the new position.
         let new_value = match heading {
             Heading::Up    => (path.x, path.y - 1),
             Heading::Right => (path.x + 1, path.y),
@@ -62,8 +66,10 @@ fn traversable(
             false => 1
         };
 
+        // Checking we haven’t done the exact same rule before.
         if !filed.contains(&(new_value.0, new_value.1, heading.clone(), new_streak)) {
             if heading == path.heading {
+                // Checking we haven’t walked too far in a straight line.
                 return new_streak <= range.1;
             } else {
                 // For crucibles with lower bounds, we need to make sure we’ve gone far enough.
@@ -93,7 +99,9 @@ fn warmest_path(range: (usize, usize)) -> usize {
 
         let mut paths: Vec<Path> = vec![];
 
-        // For the generic solution, we.
+        // For the generic solution, we need to ensure our start headings are good.
+        // If we only started with one direction, we wouldn’t be able to turn immediately when a
+        // lower bound is set.
         paths.push(Path {
             x: 0,
             y: 0,
@@ -110,18 +118,16 @@ fn warmest_path(range: (usize, usize)) -> usize {
             cost: 0
         });
 
-
         filed.insert((0, 0, Heading::Right, 0));
         filed.insert((0, 0, Heading::Down, 0));
 
         while let Some(path) = paths.pop() {
-
-            if path.y == map.len() - 1 && path.x == map[path.y].len() - 1 {
-                if path.streak >= range.0 {
-                    return path.cost;
-                } else {
-                    continue;
-                }
+            // Check our exit condition. We’re on the exit tile and our streak is good.
+            if path.y == map.len() - 1 &&
+                path.x == map[path.y].len() - 1 &&
+                path.streak >= range.0
+            {
+                return path.cost;
             }
 
             // Left.
@@ -196,10 +202,12 @@ fn warmest_path(range: (usize, usize)) -> usize {
                 });
             }
 
+            // Sort to get the current “best looking” tile.
             paths.sort_by(|a, b| b.cost.cmp(&a.cost));
         }
 
-        panic!("no path found");
+        // If we hit here, there is something wrong with our input.
+        unreachable!();
     } else {
         panic!("file not found")
     }
@@ -208,5 +216,5 @@ fn warmest_path(range: (usize, usize)) -> usize {
 
 fn main() {
     println!("part one: {}", warmest_path((1, 3)));
-    println!("part one: {}", warmest_path((4, 10)));
+    println!("part two: {}", warmest_path((4, 10)));
 }
