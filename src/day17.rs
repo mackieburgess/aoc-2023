@@ -1,7 +1,7 @@
 use std::fs;
 use std::collections::HashSet;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 enum Heading {
     Up,
     Right,
@@ -9,7 +9,6 @@ enum Heading {
     Left
 }
 
-#[derive(Debug)]
 struct Path {
     x: usize,
     y: usize,
@@ -33,7 +32,8 @@ fn traversable(
     map: &Vec<Vec<usize>>,
     filed: &HashSet<(usize, usize, Heading, usize)>,
     path: &Path,
-    heading: Heading
+    heading: Heading,
+    range: (usize, usize)
 ) -> bool {
     // No backtracking rule.
     // This took 3 hours to figure out.
@@ -62,8 +62,14 @@ fn traversable(
             false => 1
         };
 
-        if !filed.contains(&(new_value.0, new_value.1, heading, new_streak)) {
-            return new_streak <= 3;
+        if !filed.contains(&(new_value.0, new_value.1, heading.clone(), new_streak)) {
+            if heading == path.heading {
+                return new_streak <= range.1;
+            } else {
+                // For crucibles with lower bounds, we need to make sure we’ve gone far enough.
+                return range.0 <= path.streak;
+            }
+
         } else {
             return false;
         }
@@ -72,9 +78,13 @@ fn traversable(
     }
 }
 
-fn warmest_path() -> usize {
-    // Find the lowest cost path through the maze, without taking more than
-    // three steps in the same direction.
+fn warmest_path(range: (usize, usize)) -> usize {
+    // For part one we find the lowest cost path through the maze, without
+    // taking more than three steps in the same direction.
+    //
+    // For part two, we make this generic for sticking between a “turning range”.
+    // This means we have to have gone a certain distance before we can turn, and
+    // we have to turn before we hit a certain number of steps in a row.
 
     if let Some(input) = fs::read_to_string("data/17.input").ok() {
         let map = build_map(input);
@@ -83,25 +93,39 @@ fn warmest_path() -> usize {
 
         let mut paths: Vec<Path> = vec![];
 
-        // Our starting point.
+        // For the generic solution, we.
         paths.push(Path {
             x: 0,
             y: 0,
-            heading: Heading::Left,
+            heading: Heading::Right,
             streak: 0,
             cost: 0
         });
 
-        filed.insert((0, 0, Heading::Left, 0));
+        paths.push(Path {
+            x: 0,
+            y: 0,
+            heading: Heading::Down,
+            streak: 0,
+            cost: 0
+        });
+
+
+        filed.insert((0, 0, Heading::Right, 0));
+        filed.insert((0, 0, Heading::Down, 0));
 
         while let Some(path) = paths.pop() {
 
             if path.y == map.len() - 1 && path.x == map[path.y].len() - 1 {
-                return path.cost;
+                if path.streak >= range.0 {
+                    return path.cost;
+                } else {
+                    continue;
+                }
             }
 
             // Left.
-            if traversable(&map, &filed, &path, Heading::Left) {
+            if traversable(&map, &filed, &path, Heading::Left, range) {
                 let new_streak = match path.heading == Heading::Left {
                     true => path.streak + 1,
                     false => 1
@@ -119,7 +143,7 @@ fn warmest_path() -> usize {
             }
 
             // Right.
-            if traversable(&map, &filed, &path, Heading::Right) {
+            if traversable(&map, &filed, &path, Heading::Right, range) {
                 let new_streak = match path.heading == Heading::Right {
                     true => path.streak + 1,
                     false => 1
@@ -137,7 +161,7 @@ fn warmest_path() -> usize {
             }
 
             // Up.
-            if traversable(&map, &filed, &path, Heading::Up) {
+            if traversable(&map, &filed, &path, Heading::Up, range) {
                 let new_streak = match path.heading == Heading::Up {
                     true => path.streak + 1,
                     false => 1
@@ -155,7 +179,7 @@ fn warmest_path() -> usize {
             }
 
             // Down.
-            if traversable(&map, &filed, &path, Heading::Down) {
+            if traversable(&map, &filed, &path, Heading::Down, range) {
                 let new_streak = match path.heading == Heading::Down {
                     true => path.streak + 1,
                     false => 1
@@ -183,5 +207,6 @@ fn warmest_path() -> usize {
 }
 
 fn main() {
-    println!("part one: {}", warmest_path());
+    println!("part one: {}", warmest_path((1, 3)));
+    println!("part one: {}", warmest_path((4, 10)));
 }
