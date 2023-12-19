@@ -130,6 +130,8 @@ fn passes(part: &Part, workflows: &Vec<Workflow>, work_code: String) -> bool {
 }
 
 fn accepted_parts() -> usize {
+    // For each part which gets accepted by the workflow, sum up it’s characteristics.
+
     if let Some(input) = fs::read_to_string("data/19.input").ok() {
         if let Some((workflows, parts)) = input.split_once("\n\n") {
             let workflows = build_workflows(workflows);
@@ -146,6 +148,108 @@ fn accepted_parts() -> usize {
     panic!("file not found")
 }
 
+fn acceptable_combinations(
+    workflows: &Vec<Workflow>,
+    code: String,
+    idx: usize,
+    ranges: Vec<(usize, usize)>
+) -> usize {
+    // No combinations left.
+    if ranges[0].0 > ranges[0].1 ||
+       ranges[1].0 > ranges[1].1 ||
+       ranges[2].0 > ranges[2].1 ||
+       ranges[3].0 > ranges[3].1
+    {
+        return 0;
+    }
+
+    // Accepted range of combinations.
+    if &code == "A" {
+        return
+            (ranges[0].1 - ranges[0].0 + 1) *
+            (ranges[1].1 - ranges[1].0 + 1) *
+            (ranges[2].1 - ranges[2].0 + 1) *
+            (ranges[3].1 - ranges[3].0 + 1);
+    }
+
+    // Rejected range of combinations.
+    if &code == "R" {
+        return 0;
+    }
+
+    // Lots and lots of parsing down.
+    if let Some(workflow) = workflows.iter().find(|w| w.code == code) {
+        if workflow.tests.len() == idx {
+            return acceptable_combinations(
+                workflows,
+                workflow.fallback.clone(),
+                0,
+                ranges
+            );
+        }
+
+        // Get the part of ranges which needs modification.
+        let to_modify = match workflow.tests[idx].chars().nth(0) {
+            Some('x') => 0,
+            Some('m') => 1,
+            Some('a') => 2,
+            Some('s') => 3,
+            _ => unreachable!()
+        };
+
+        // Get the operation.
+        let operation = workflow.tests[idx].chars().nth(1).unwrap();
+
+        if let Some((condition, new_code)) = workflow.tests[idx].split_once(':') {
+            if let Some((_, number)) = condition.split_once(operation) {
+                // Get the condition number.
+                let number = number.parse::<usize>().unwrap();
+
+                let mut true_ranges  = ranges.clone();
+                let mut false_ranges = ranges.clone();
+
+                // Split into the accepted and unaccepted parts.
+
+                true_ranges[to_modify] = match operation {
+                    '>' => (number + 1, ranges[to_modify].1),
+                    '<' => (ranges[to_modify].0, number - 1),
+                    _ => unreachable!()
+                };
+
+                false_ranges[to_modify] = match operation {
+                    '>' => (ranges[to_modify].0, number),
+                    '<' => (number, ranges[to_modify].1),
+                    _ => unreachable!()
+                };
+
+                // Sum up the combinations of the two sub-ranges.
+                return acceptable_combinations(workflows, new_code.to_string(), 0, true_ranges) +
+                    acceptable_combinations(workflows, code, idx+1, false_ranges);
+            }
+        }
+    }
+
+    unreachable!()
+}
+
+fn all_acceptable_combinations() -> usize {
+    // Calculate how many combinations exists which would be accepted.
+    // Each value can be between 1 and 4000 for each.
+
+    if let Some(input) = fs::read_to_string("data/19.input").ok() {
+        if let Some((workflows, _)) = input.split_once("\n\n") {
+            let workflows = build_workflows(workflows);
+
+            let ranges = vec![(1, 4000), (1, 4000), (1, 4000), (1, 4000)];
+
+            return acceptable_combinations(&workflows, "in".to_string(), 0, ranges);
+        }
+    }
+
+    panic!("file not found")
+}
+
 fn main() {
     println!("part one: {}", accepted_parts());
+    println!("part two: {}", all_acceptable_combinations());
 }
