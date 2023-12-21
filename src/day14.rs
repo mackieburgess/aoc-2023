@@ -170,8 +170,8 @@ fn spin_cycles() -> usize {
     // Move all rounded rocks to the top, left, bottom, right. Repeat 1_000_000_000 times. At the
     // end, calculate the load on the north wall.
     //
-    // To cut down on calculations, keep track of the rock position after each cycle. If it doesn’t
-    // change, we can exit early.
+    // To cut down on calculations, keep track of the rock position after each cycle. If we find a
+    // loop, we can use it to skip ahead by a bunch.
 
     if let Some(grid) = fs::read_to_string("data/14.input").ok() {
         let mut walls = vec![];
