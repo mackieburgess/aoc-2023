@@ -239,5 +239,4 @@ fn spin_cycles() -> usize {
 fn main() {
     println!("part one: {}", total_load());
     println!("part two: {}", spin_cycles());
-    // NOTE: part two is completely screwed, it doesn’t even move the rocks right.
 }
