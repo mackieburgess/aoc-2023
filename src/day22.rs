@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, collections::HashMap};
 
 #[derive(Clone)]
 struct Brick {
@@ -109,6 +109,45 @@ fn superfluous_bricks() -> usize {
     }
 }
 
+fn calculate_chain_reaction(
+    bricks: &Vec<Brick>,
+    found: &mut Vec<usize>,
+    idx: usize,
+) -> usize {
+    // Bit slow but works like a charm.
+
+    let mut count = 0;
+
+    for brick in bricks {
+        if brick.bases.len() > 0 && brick.bases.iter().all(|base| *base == idx || found.contains(&base)) {
+            if !found.contains(&brick.code) {
+                found.push(brick.code);
+                count += calculate_chain_reaction(bricks, found, brick.code) + 1;
+            }
+        }
+    }
+
+    return count;
+}
+
+fn chain_reactions() -> usize {
+    // Now instead of *not* disrupting bricks, let’s disrupt them and sum up
+    // how many bricks are in each chain reaction.
+
+    if let Some(bricks) = fs::read_to_string("data/22.input").ok() {
+        let bricks = build_bricks(bricks);
+
+        (0..bricks.len())
+            .map(|idx| {
+                let result = calculate_chain_reaction(&bricks, vec![].as_mut(), idx);
+                return result;
+            }).sum()
+    } else {
+        panic!("file not found")
+    }
+}
+
 fn main() {
     println!("part one: {}", superfluous_bricks());
+    println!("part two: {}", chain_reactions());
 }
